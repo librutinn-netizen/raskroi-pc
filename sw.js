@@ -1,6 +1,6 @@
 /* Service Worker ПК-версии: офлайн-оболочка, данные всегда с сервера. */
-const CACHE = 'raskroi-pc2';
-const ASSETS = ['./', './index.html', './styles.css', './app.js', './config.js', './manifest.json'];
+const CACHE = 'raskroi-pc3';
+const ASSETS = ['./', './index.html', './styles.css', './app.js', './config.js?v=4', './manifest.json'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));
 });
