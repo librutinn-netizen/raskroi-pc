@@ -544,3 +544,8 @@ $('#pTheme').onclick=()=>applyTheme(document.body.classList.contains('dark')?'li
 saveLocal(); renderMe(); renderList(); renderDir();
 applyTheme(localStorage.getItem('raskroi_theme')||'light');
 pullState(); setInterval(()=>{ if(!document.hidden) pullState(); }, CLOUD?5000:3000);
+if('serviceWorker' in navigator){
+  const updSW=()=>{ try{ navigator.serviceWorker.getRegistration().then(r=>{ if(r) r.update().catch(()=>{}); }); }catch{} };
+  setInterval(updSW, 60*60*1000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) updSW(); });
+}
