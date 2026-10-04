@@ -59,8 +59,7 @@ function seed(){
       {id:uid(),name:'Сергей',color:PALETTE[1]},
       {id:uid(),name:'Андрей',color:PALETTE[2]},
       {id:uid(),name:'Павел',color:PALETTE[3]},
-    ],
-    currentAccountId:null
+    ]
   };
 }
 
@@ -72,7 +71,9 @@ if(!DB){
   if(!DB) DB=seed();
 }
 function saveLocal(){ try{localStorage.setItem(DB_KEY, JSON.stringify(DB));}catch{} }
-// ---------- аккаунты ----------
+// ---------- аккаунты (активный — только на этом устройстве) ----------
+function myId(){ try{ return localStorage.getItem('raskroi_me')||''; }catch{ return ''; } }
+function setMyId(id){ try{ localStorage.setItem('raskroi_me', id); }catch{} }
 function ensureAccounts(){
   if(!Array.isArray(DB.accounts)||!DB.accounts.length){
     DB.accounts=[
@@ -82,13 +83,15 @@ function ensureAccounts(){
       {id:uid(),name:'Павел',color:PALETTE[3]},
     ];
   }
-  if(!DB.accounts.some(a=>a.id===DB.currentAccountId)) DB.currentAccountId=DB.accounts[0].id;
+  if(DB.currentAccountId) setMyId(DB.currentAccountId); // разовая миграция со старого формата
+  delete DB.currentAccountId;
+  if(!DB.accounts.some(a=>a.id===myId())) setMyId(DB.accounts[0].id);
 }
 ensureAccounts();
 function dateVal(iso){ return Date.parse((iso||'')+'T00:00:00')||0; }
 function ensureCreatedAt(){ DB.raskroi.forEach((r,i)=>{ if(typeof r.createdAt!=='number') r.createdAt=dateVal(r.date)-i; }); }
 ensureCreatedAt();
-function curAcc(){ return DB.accounts.find(a=>a.id===DB.currentAccountId)||DB.accounts[0]; }
+function curAcc(){ return DB.accounts.find(a=>a.id===myId())||DB.accounts[0]; }
 function accColorFor(mt){
   if(mt.by){ const a=DB.accounts.find(x=>x.id===mt.by); if(a) return a.color; }
   if(mt.assignee){ const a=DB.accounts.find(x=>x.name===mt.assignee); if(a) return a.color; }
@@ -458,10 +461,10 @@ function renderAcc(){
       e.stopPropagation();
       if(DB.accounts.length<=1){ toast('Должен остаться хотя бы один'); return; }
       DB.accounts=DB.accounts.filter(x=>x.id!==a.id);
-      if(DB.currentAccountId===a.id) DB.currentAccountId=DB.accounts[0].id;
+      if(myId()===a.id) setMyId(DB.accounts[0].id);
       save(); rerender();
     };
-    d.onclick=()=>{ DB.currentAccountId=a.id; save(); rerender(); toast('Пилишь как '+a.name); };
+    d.onclick=()=>{ setMyId(a.id); rerender(); toast('Пилишь как '+a.name); };
     box.appendChild(d);
   });
 }
@@ -487,7 +490,7 @@ $('#pNewAccBtn').onclick=()=>{
   const used=DB.accounts.map(a=>a.color);
   const color=PALETTE.find(c=>!used.includes(c))||PALETTE[DB.accounts.length%PALETTE.length];
   DB.accounts.push({id:uid(),name:v,desc:'',color});
-  DB.currentAccountId=DB.accounts[DB.accounts.length-1].id;
+  setMyId(DB.accounts[DB.accounts.length-1].id);
   $('#pNewAcc').value=''; save(); rerender();
 };
 
