@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Раскрои — ПК версия</title>
+<meta name="theme-color" content="#1a9e54">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=4">
+</head>
+<body>
+<div id="pc">
+  <!-- ===== сайдбар ===== -->
+  <aside class="side">
+    <div class="brand"><span class="logo">📋</span><div><b>Раскрои</b><small>учёт цеха</small></div></div>
+    <nav class="snav">
+      <button class="snav-btn active" data-p="list">📋 Раскрои</button>
+      <button class="snav-btn" data-p="mats">🗂️ Материалы</button>
+      <button class="snav-btn" data-p="acc">👤 Аккаунты</button>
+    </nav>
+    <div class="side-foot">
+      <button id="pMe" class="btn">👤 …</button>
+      <button id="pTheme" class="btn">🌙 Тёмная тема</button>
+      <div class="sync"><i id="syncDot"></i><span id="syncTxt">локально</span></div>
+    </div>
+  </aside>
+
+  <!-- ===== контент ===== -->
+  <main id="main">
+    <!-- РАСКРОИ -->
+    <section id="pg-list" class="page active">
+      <div class="toolbar">
+        <div class="tsearch-wrap"><div class="tsearch"><span>🔍</span><input id="pSearch" placeholder="Поиск по названию раскроя..." autocomplete="off"></div><div id="pSearchDrop" class="search-drop hidden"></div></div>
+      </div>
+      <div class="split" id="split">
+        <div class="list-col">
+          <div class="month-nav">
+            <button class="icon-btn" id="pMPrev" title="Прошлый месяц">‹</button>
+            <div class="month-pick"><button class="month-title" id="pMonthBtn"><span id="pListTitle">Раскрои</span> <small>▾</small></button><div id="pMonthMenu" class="month-menu hidden"></div></div>
+            <button class="icon-btn" id="pMNext" title="Следующий месяц">›</button>
+          </div>
+          <div id="pCards" class="cards"></div>
+        </div>
+        <div id="pDetail" class="detail">
+          <div id="pDetailBody">
+          <div class="d-head">
+            <div><h2 id="pdTitle"></h2></div>
+            <div class="d-head-btns">
+              <button class="icon-btn" id="pdRename" title="Переименовать">✏️</button>
+              <button class="icon-btn" id="pdClose" title="Закрыть">×</button>
+            </div>
+          </div>
+          <div class="progress-card">
+            <div class="progress-top">📄 <span id="pdCount"></span><b id="pdFrac"></b></div>
+            <div id="pdBarBox"></div>
+          </div>
+          <h3 class="section-title">Материалы <small class="hint-inline">— клик меняет статус</small></h3>
+          <div id="pdMats" class="mats"></div>
+          <p id="pdNote" class="detail-note hidden"></p>
+          <button id="pdAdd" class="add-mat full">+ Добавить материал</button>
+          <div class="row2 gap"><button id="pdDup" class="btn">⧉ Повторить</button>
+          <button id="pdDelete" class="btn ghost danger">🗑 Удалить раскрой</button></div>
+          </div>
+          <div id="pDetailEmpty" class="empty-pick hidden">← Выбери раскрой из списка</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- МАТЕРИАЛЫ -->
+    <section id="pg-mats" class="page">
+      <div class="toolbar">
+        <div class="tsearch"><span>🔍</span><input id="pMatSearch" placeholder="Найти материал..." autocomplete="off"></div>
+        <div class="tadd"><input id="pNewMat" placeholder="+ Новый материал" autocomplete="off"><button id="pNewMatBtn" class="btn green">Добавить</button></div>
+      </div>
+      <h3 class="section-title">Справочник материалов</h3>
+      <div id="pMatDir" class="dir-table"></div>
+    </section>
+
+    <!-- АККАУНТЫ -->
+    <section id="pg-acc" class="page">
+      <div class="toolbar">
+        <div class="tadd"><input id="pNewAcc" placeholder="+ Имя, напр. Илья"><button id="pNewAccBtn" class="btn green">Добавить</button></div>
+      </div>
+      <h3 class="section-title">Аккаунты <small class="hint-inline">— кто напилил, таким цветом отметится. Клик по строке — пилить под этим именем, клик по кружку — сменить цвет</small></h3>
+      <div id="pAccList" class="cards one"></div>
+    </section>
+  </main>
+
+  <button id="pFab" class="fab">+ Новый раскрой</button>
+</div>
+
+<!-- новый раскрой -->
+<div id="pNewModal" class="modal hidden">
+  <div class="sheet wide">
+    <h3>Новый раскрой</h3>
+    <input id="pnTitle" placeholder="Название раскроя">
+    <h4>Материалы</h4>
+    <div id="pnMats"></div>
+    <button id="pnAdd" class="add-mat">+ Добавить материал</button>
+    <label class="lbl">Примечание</label>
+    <textarea id="pnNote" placeholder="Дополнительная информация..."></textarea>
+    <div class="row2 gap">
+      <button id="pnCancel" class="btn">Отмена</button>
+      <button id="pnSave" class="btn green">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- редактирование аккаунта -->
+<div id="pAccModal" class="modal hidden">
+  <div class="sheet">
+    <h3>Аккаунт</h3>
+    <label class="lbl">Имя</label>
+    <input id="pAccName" placeholder="Имя" autocomplete="off">
+    <label class="lbl">Описание</label>
+    <input id="pAccDesc" placeholder="Кто это, напр. пильщик цеха 1" autocomplete="off">
+    <div class="row2 gap">
+      <button id="pAccCancel" class="btn">Отмена</button>
+      <button id="pAccSave" class="btn green">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- общий попап -->
+<div id="pAppModal" class="modal hidden">
+  <div class="sheet">
+    <h3 id="paTitle"></h3>
+    <p id="paText" class="am-text"></p>
+    <div class="prompt-wrap"><input id="paInput" class="hidden" autocomplete="off">
+    <div id="paSuggest" class="suggest-float"></div></div>
+    <div class="row2 gap">
+      <button id="paCancel" class="btn">Отмена</button>
+      <button id="paOk" class="btn green">ОК</button>
+    </div>
+  </div>
+</div>
+
+<div id="pToast" class="toast hidden"></div>
+
+<script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
+<script src="config.js?v=4"></script>
+<script src="app.js?v=5"></script>
+</body>
+</html>
