@@ -1,5 +1,5 @@
 /* ПК-версия учёта раскроев: сайдбар + мастер-деталь. Данные общие с мобильной (сервер /api/state). */
-const BUILD='20261005a';
+const BUILD='20261005b';
 if(window.BUILD&&window.BUILD!==BUILD){ try{ location.reload(); }catch{} }
 window.addEventListener('error',e=>{
   const msg='Ошибка: '+(e.message||'unknown');
