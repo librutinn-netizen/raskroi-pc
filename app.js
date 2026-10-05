@@ -184,12 +184,17 @@ async function pullState(){
     if(s&&typeof s.rev==='number'&&s.rev>serverRev&&s.data&&Array.isArray(s.data.raskroi)){
       serverRev=s.rev; DB=s.data; ensureAccounts(); ensureCreatedAt(); saveLocal(); rerender(); markSync();
     }
-  }catch{} finally{ synced=true; }
+  }catch{ markSyncErr(); } finally{ synced=true; }
+}
+function markSyncErr(){
+  const d=$('#syncDot'), t=$('#syncTxt');
+  if(d) d.classList.remove('on');
+  if(t) t.textContent='облако: ошибка ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 function markSync(){
   const d=$('#syncDot'), t=$('#syncTxt');
   if(d) d.classList.add('on');
-  if(t) t.textContent='синхронизировано ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if(t) t.textContent='синхронизировано ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + (realtimeOn?' ⚡':'');
 }
 function rerender(){ renderMe(); renderList(); renderDir(); if(curPage==='acc') renderAcc(); if(currentId) renderDetail(); }
 function renderMe(){
@@ -544,6 +549,19 @@ $('#pTheme').onclick=()=>applyTheme(document.body.classList.contains('dark')?'li
 saveLocal(); renderMe(); renderList(); renderDir();
 applyTheme(localStorage.getItem('raskroi_theme')||'light');
 pullState(); setInterval(()=>{ if(!document.hidden) pullState(); }, CLOUD?5000:3000);
+// мгновенная синхронизация через Realtime (если включена репликация таблицы)
+let realtimeOn=false;
+function markSyncFlash(){
+  const t=$('#syncTxt');
+  if(t && realtimeOn) t.textContent+=' ⚡';
+}
+try{
+  if(CLOUD && window.supabase){
+    const sb=window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
+    sb.channel('state').on('postgres_changes',{event:'*',schema:'public',table:'app_state'},()=>{ pullState(); })
+      .subscribe((st)=>{ realtimeOn=(st==='SUBSCRIBED'); if(realtimeOn) markSyncFlash(); });
+  }
+}catch{}
 if('serviceWorker' in navigator){
   const updSW=()=>{ try{ navigator.serviceWorker.getRegistration().then(r=>{ if(r) r.update().catch(()=>{}); }); }catch{} };
   setInterval(updSW, 60*60*1000);
