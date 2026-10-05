@@ -1,4 +1,6 @@
 /* ПК-версия учёта раскроев: сайдбар + мастер-деталь. Данные общие с мобильной (сервер /api/state). */
+const BUILD='20261005a';
+if(window.BUILD&&window.BUILD!==BUILD){ try{ location.reload(); }catch{} }
 window.addEventListener('error',e=>{
   const msg='Ошибка: '+(e.message||'unknown');
   try{ toast(msg); }catch{}
@@ -14,13 +16,22 @@ const $ = s => document.querySelector(s);
 const uid = () => Math.random().toString(36).slice(2,9);
 const todayISO = () => new Date().toISOString().slice(0,10);
 const fmtDate = iso => { try{ const [y,m,d]=iso.split('-'); return `${d}.${m}.${y}`;}catch{return iso} };
-const isToday = iso => iso===todayISO();
-const isYesterday = iso => { const d=new Date(); d.setDate(d.getDate()-1); return iso===d.toISOString().slice(0,10); };
 const esc = s => String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // статус материала: todo (не напилено) / work (не закончен) / done (напилено)
 function mst(mt){ if(mt.st!=='done'&&mt.st!=='work'&&mt.st!=='todo') mt.st=mt.done?'done':'todo'; return mt.st; }
-function stName(s){ return s==='done'?'Напилено':s==='work'?'Не закончен':'Не напилено'; }
-function stPill(s){ return s==='done'?'ok':s==='work'?'mid':'no'; }
+function whoText(mt,s){
+  if(s==='done'){
+    const fin=accNameFor(mt), st=accStarterName(mt);
+    if(fin&&st&&st!==fin) return `Пилили: ${esc(st)}, ${esc(fin)}`;
+    if(fin) return `Пилил: ${esc(fin)}`;
+    return 'Напилено';
+  }
+  if(s==='work'){
+    const st=accStarterName(mt)||mt.assignee||'';
+    return st?`Пилит: ${esc(st)}`:'Не закончен';
+  }
+  return 'Не напилено';
+}
 function cycleSt(mt){
   const me=curAcc().id, s=mst(mt);
   if(s==='todo'){ mt.st='work'; mt.done=false; mt.byStart=me; }
@@ -41,7 +52,7 @@ function noteHTML(r){
   return t?`<div class="card-note">📝 ${esc(t)}</div>`:'';
 }
 
-const PALETTE=['#1a9e54','#e8892b','#2f80ed','#9333ea','#e5484d','#0e9b8b','#d63384','#795548'];
+const PALETTE=['#1a9e54','#e8892b','#2f80ed','#9333ea','#e5484d','#0e9b8b','#d63384','#795548','#00acc1','#3f51b5','#c0ca33','#ff6f00','#607d8b','#ff4081','#7cb342','#5e35b1'];
 function seed(){
   const t=todayISO();
   const y=(()=>{const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10)})();
@@ -109,6 +120,11 @@ function accStarterName(mt){
 }
 function accColorById(id){
   const a=DB.accounts.find(x=>x.id===id); return a?a.color:'';
+}
+function workColor(mt){
+  const c=accColorById(mt.byStart); if(c) return c;
+  if(mt.assignee){ const a=DB.accounts.find(x=>x.name===mt.assignee); if(a) return a.color; }
+  return '#d97e22';
 }
 
 // ---------- синхронизация: облако Supabase (если настроено) или свой сервер ---
@@ -196,7 +212,7 @@ function markSyncErr(){
 function markSync(){
   const d=$('#syncDot'), t=$('#syncTxt');
   if(d) d.classList.add('on');
-  if(t) t.textContent='синхронизировано ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'}) + (realtimeOn?' ⚡':'');
+  if(t) t.textContent='синхронизировано ' + new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
 }
 function rerender(){ renderMe(); renderList(); renderDir(); if(curPage==='acc') renderAcc(); if(currentId) renderDetail(); }
 function renderMe(){
@@ -253,7 +269,7 @@ function renderList(){
     el.className='card'+(r.id===currentId?' sel':'');
     el.innerHTML=`<div class="card-top"><b>${esc(r.title)}</b><span class="badge ${statusOf(r)}">${statusName[statusOf(r)]}</span></div>
       ${barHTML(act,false)}
-      <div class="card-mat">📄 ${act.length} материалов</div><span class="frac"><span class="cdots">${dotsHTML(act)}</span> ${act.filter(x=>x.done).length}/${act.length}</span>
+      <div class="card-mat">📄 ${act.length} материалов<span class="frac"><span class="cdots">${dotsHTML(act)}</span> ${act.filter(x=>x.done).length}/${act.length}</span></div>
       ${noteHTML(r)}`;
     el.onclick=()=>{ currentId=r.id; renderList(); renderDetail(); };
     box.appendChild(el);
@@ -286,6 +302,11 @@ function openMonthMenu(){
 $('#pMonthBtn').onclick=e=>{ e.stopPropagation(); const m=$('#pMonthMenu'); m.classList.contains('hidden')?openMonthMenu():m.classList.add('hidden'); };
 document.addEventListener('click',e=>{ if(!e.target.closest('.month-pick')) $('#pMonthMenu').classList.add('hidden'); });
 $('#pSearch').oninput=e=>{ q=e.target.value; renderSearchDrop(); };
+function showSpot(){ $('#pSpot').classList.remove('hidden'); }
+function hideSpot(){ $('#pSpot').classList.add('hidden'); }
+$('#pSearch').addEventListener('focus',showSpot);
+$('#pSearch').addEventListener('blur',()=>setTimeout(()=>{ if($('#pSearchDrop').classList.contains('hidden')) hideSpot(); },150));
+$('#pSpot').onclick=()=>{ hideSpot(); $('#pSearchDrop').classList.add('hidden'); try{$('#pSearch').blur();}catch{} };
 function monthOffFor(key){ const p=(key||'').split('-'); const y=+p[0], m=+p[1]; if(!y||!m) return 0; const n=new Date(); return (y-n.getFullYear())*12+((m-1)-n.getMonth()); }
 function monthNameOf(key){ const p=(key||'').split('-'); const y=+p[0], m=+p[1]; if(!y||!m) return ''; const s=new Date(y,m-1,1).toLocaleDateString('ru-RU',{month:'long',year:'numeric'}); return s.charAt(0).toUpperCase()+s.slice(1); }
 function renderSearchDrop(){
@@ -302,12 +323,12 @@ function renderSearchDrop(){
     b.innerHTML=`<div class="card-top"><b>${esc(r.title)}</b><span class="badge ${st}">${statusName[st]}</span></div>
       <div class="progress slim"><i style="width:${pct}%"></i></div>
       <div class="sr-meta"><span>${fmtDate(r.date)} · ${monthNameOf((r.date||'').slice(0,7))}</span><span>${d}/${act.length}</span></div>`;
-    b.onmousedown=e=>{ e.preventDefault(); monthOff=monthOffFor((r.date||'').slice(0,7)); q=''; $('#pSearch').value=''; box.classList.add('hidden'); currentId=r.id; renderList(); renderDetail(); };
+    b.onmousedown=e=>{ e.preventDefault(); monthOff=monthOffFor((r.date||'').slice(0,7)); q=''; $('#pSearch').value=''; box.classList.add('hidden'); hideSpot(); currentId=r.id; renderList(); renderDetail(); };
     box.appendChild(b);
   });
-  box.classList.remove('hidden');
+  box.classList.remove('hidden'); showSpot();
 }
-document.addEventListener('click',e=>{ if(!e.target.closest('.tsearch-wrap')) $('#pSearchDrop').classList.add('hidden'); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.tsearch-wrap')){ $('#pSearchDrop').classList.add('hidden'); hideSpot(); } });
 $('#pMPrev').onclick=()=>{ monthOff--; renderList(); };
 $('#pMNext').onclick=()=>{ monthOff++; renderList(); };
 
@@ -315,6 +336,7 @@ $('#pMNext').onclick=()=>{ monthOff++; renderList(); };
 const cur=()=>DB.raskroi.find(r=>r.id===currentId);
 function renderDetail(){
   const r=cur(); if(!r){ currentId=null; renderList(); return; }
+  if(quickOpen&&!$('#quickAddRow')) quickOpen=false;
   $('#pdTitle').textContent=r.title;
   const pn=$('#pdNote');
   if(r.note&&r.note.trim()){ pn.textContent=r.note; pn.classList.remove('hidden'); }
@@ -328,25 +350,22 @@ function renderDetail(){
     const col=s==='done'?accColorFor(mt):'';
     const byName=s==='done'?accNameFor(mt):'';
     const starter=accStarterName(mt);
+    const wcol=s==='work'?workColor(mt):'';
     const scol=(s==='done'&&starter&&mt.byStart!==mt.by)?accColorById(mt.byStart):'';
     const el=document.createElement('div');
     el.className='mat'+(s==='done'?' done':'')+(s==='work'?' work':'')+(mt.skip?' skip':'');
-    const pillHtml=s==='done'
-      ? `<span class="pill ok" style="background:${col};color:#fff">Напилено${byName?' · '+esc(byName):''}</span>`
-      : s==='work'
-      ? `<span class="pill mid">Не закончен${starter?' · '+esc(starter):''}</span>`
-      : `<span class="pill ${stPill(s)}">${stName(s)}</span>`;
-    const startedLine=(s==='done'&&starter&&mt.byStart!==mt.by)?`<span class="started">начинал: ${esc(starter)}</span>`:'';
-    const rowInner=`<div><b>${esc(mt.name)}</b>${mt.size?`<small>${esc(mt.size)}</small><br>`:''}
-      ${mt.skip?'<span class="pill no">Пропуск</span>':pillHtml+startedLine}
-      ${mt.assignee?`<span class="worker">👤 ${esc(mt.assignee)}</span>`:''}</div>
-      <div class="mat-x"><button title="Удалить из раскроя">×</button></div>`;
+    const pillHtml=`<span class="stxt dim">${whoText(mt,s)}</span>`;
+    const rowInner=`<div class="mat-main"><div class="mat-line1"><span class="mat-group"><b>${esc(mt.name)}${mt.size?` <small>${esc(mt.size)}</small>`:''}</b>${mt.skip?'<span class="stxt dim">Пропуск</span>':pillHtml}${mt.assignee?`<span class="worker">👤 ${esc(mt.assignee)}</span>`:''}</span><div class="mat-x"><button title="Удалить из раскроя">×</button></div></div></div>`;
     if(col&&scol){
       el.setAttribute('style',`border:0;padding:2px;background:linear-gradient(to right,${scol} 50%,${col} 50%)`);
       el.innerHTML=`<div class="mat-in" style="background-image:linear-gradient(to right,${scol}22 50%,${col}22 50%),linear-gradient(var(--surface),var(--surface))">${rowInner}</div>`;
-    } else {
+    }
+    else if(s==='work'){
+      el.setAttribute('style',`border:0;padding:2px;background:linear-gradient(to right,${wcol} 50%,transparent 50%)`);
+      el.innerHTML=`<div class="mat-in" style="background-image:linear-gradient(to right,${wcol}22 50%,transparent 50%),linear-gradient(var(--surface),var(--surface))">${rowInner}</div>`;
+    }
+    else {
       if(col) el.setAttribute('style',`border-color:${col};background:${col}22`);
-      else if(s==='work') el.setAttribute('style',`border-color:transparent;background-image:linear-gradient(rgba(217,126,34,.10),rgba(217,126,34,.10)),linear-gradient(var(--surface),var(--surface)),linear-gradient(to right,var(--orange) 50%,transparent 50%);background-clip:padding-box,padding-box,border-box`);
       el.innerHTML=rowInner;
     }
     el.onclick=()=>{ if(!mt.skip){ cycleSt(mt); save(); renderDetail(); renderList(); } };
@@ -364,22 +383,47 @@ $('#pdRename').onclick=async()=>{
   const a=await appPrompt('Переименовать раскрой', r.title);
   if(a&&a.trim()){ r.title=a.trim(); save(); renderDetail(); renderList(); }
 };
-$('#pdAdd').onclick=async()=>{
-  const r=cur(); if(!r) return;
-  const name=await appPrompt('Новый материал','',true);
-  if(!name||!name.trim()) return;
-  const t=name.trim();
-  if(!DB.dirs.includes(t)) DB.dirs.unshift(t);
-  r.materials.push({id:uid(),name:t,size:'',qty:1,unit:'л',done:false,urgent:false,skip:false,assignee:''});
-  save(); renderDetail(); renderList();
-};
-function dupRaskroy(){
-  const r=cur(); if(!r) return null;
-  const c={id:uid(),title:r.title,date:todayISO(),shop:r.shop||'Цех 1',note:r.note||'',createdAt:Date.now(),
-    materials:r.materials.map(m=>({id:uid(),name:m.name,size:m.size||'',qty:m.qty||1,unit:m.unit||'л',done:false,st:'todo',urgent:false,skip:!!m.skip,assignee:m.assignee||''}))};
-  DB.raskroi.unshift(c); save(); return c;
+let quickOpen=false;
+$('#pdAdd').onclick=()=>startQuickAdd();
+function startQuickAdd(){
+  if(quickOpen||$('#quickAddRow')) return;
+  if(!cur()) return;
+  quickOpen=true;
+  const box=$('#pdMats');
+  const d=document.createElement('div'); d.className='fmat'; d.id='quickAddRow';
+  d.innerHTML=`<div class="r"><input class="fm-n" placeholder="Название материала" autocomplete="off"><button class="fm-x btn" title="Отмена">×</button></div>`;
+  box.appendChild(d);
+  const inp=d.querySelector('input');
+  const showQ=()=>{
+    d.querySelectorAll('.suggest').forEach(s=>s.remove());
+    const qv=(inp.value||'').toLowerCase();
+    const items=DB.dirs.filter(n=>n.toLowerCase().includes(qv)).sort((a,b)=>a.localeCompare(b,'ru')).slice(0,7);
+    if(!items.length) return;
+    const bx=document.createElement('div'); bx.className='suggest';
+    items.forEach(n=>{
+      const b=document.createElement('button'); b.type='button'; b.textContent=n;
+      b.onmousedown=e=>{ e.preventDefault(); inp.value=n; commitQuickAdd(); };
+      bx.appendChild(b);
+    });
+    d.appendChild(bx);
+  };
+  inp.oninput=showQ; inp.onfocus=showQ;
+  inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); commitQuickAdd(); } };
+  inp.onblur=()=>setTimeout(()=>{ d.querySelectorAll('.suggest').forEach(s=>s.remove()); if(quickOpen) commitQuickAdd(); },150);
+  d.querySelector('button').onclick=e=>{ e.stopPropagation(); cancelQuickAdd(); };
+  setTimeout(()=>inp.focus(),60);
 }
-$('#pdDup').onclick=()=>{ const c=dupRaskroy(); if(!c) return; monthOff=0; currentId=c.id; save(); renderList(); renderDetail(); toast('Копия создана в текущем месяце'); };
+function cancelQuickAdd(){ quickOpen=false; const dd=$('#quickAddRow'); if(dd) dd.remove(); }
+function commitQuickAdd(){
+  if(!quickOpen) return;
+  const inp=document.querySelector('#quickAddRow input');
+  const v=inp?inp.value.trim():'';
+  quickOpen=false;
+  if(!v){ renderDetail(); return; }
+  if(!DB.dirs.includes(v)) DB.dirs.unshift(v);
+  cur().materials.push({id:uid(),name:v,size:'',qty:1,unit:'л',done:false,st:'todo',urgent:false,skip:false,assignee:''});
+  save(); renderDetail(); renderList();
+}
 $('#pdDelete').onclick=async()=>{
   if(await appConfirm('Удалить раскрой?','Действие нельзя отменить.','Удалить')){
     DB.raskroi=DB.raskroi.filter(r=>r.id!==currentId); currentId=null; save(); renderList();
@@ -452,6 +496,24 @@ $('#pMatSearch').oninput=e=>{ matQ=e.target.value; renderDir(); };
 $('#pNewMatBtn').onclick=()=>{ const v=$('#pNewMat').value.trim(); if(!v) return; if(!DB.dirs.includes(v)) DB.dirs.unshift(v); $('#pNewMat').value=''; save(); renderDir(); };
 
 // ---------- аккаунты ----------
+function closeColorMenu(){ document.querySelectorAll('.color-menu').forEach(m=>m.remove()); }
+function openColorMenu(anchor,acc,after){
+  closeColorMenu();
+  const r=anchor.getBoundingClientRect();
+  const m=document.createElement('div'); m.className='color-menu';
+  PALETTE.forEach(c=>{
+    const b=document.createElement('button'); b.type='button';
+    b.style.background=c; if(c===acc.color) b.classList.add('sel');
+    b.onmousedown=e=>{ e.preventDefault(); e.stopPropagation(); acc.color=c; save(); if(after) after(); closeColorMenu(); };
+    m.appendChild(b);
+  });
+  document.body.appendChild(m);
+  const W=m.offsetWidth||166, H=m.offsetHeight||166;
+  m.style.left=Math.max(8,Math.min(r.left,innerWidth-W-8))+'px';
+  let y=r.bottom+6; if(y+H>innerHeight-8) y=Math.max(8,r.top-H-6);
+  m.style.top=y+'px';
+}
+document.addEventListener('click',e=>{ if(!e.target.closest('.color-menu')&&!e.target.closest('.acc-dot')) closeColorMenu(); });
 function renderAcc(){
   const box=$('#pAccList'); box.innerHTML='';
   const me=curAcc();
@@ -459,11 +521,7 @@ function renderAcc(){
     const d=document.createElement('div'); d.className='card';
     d.innerHTML=`<div class="card-top"><div style="display:flex;align-items:center;gap:10px"><span class="acc-dot" style="background:${a.color}" title="Сменить цвет"></span><b>${esc(a.name)}</b>${a.id===me.id?'<span class="me-badge">Я</span>':''}</div><div style="display:flex;align-items:center;gap:6px"><button class="btn acc-edit" title="Редактировать">✏️</button><span class="mat-x"><button class="acc-del" title="Удалить">×</button></span></div></div>
       ${a.desc?`<div class="acc-desc">${esc(a.desc)}</div>`:''}`;
-    d.querySelector('.acc-dot').onclick=e=>{
-      e.stopPropagation();
-      const i=PALETTE.indexOf(a.color);
-      a.color=PALETTE[(i+1)%PALETTE.length]; save(); rerender();
-    };
+    d.querySelector('.acc-dot').onclick=e=>{ e.stopPropagation(); openColorMenu(e.currentTarget,a,()=>rerender()); };
     d.querySelector('.acc-edit').onclick=e=>{ e.stopPropagation(); openAccEdit(a.id); };
     d.querySelector('.acc-del').onclick=e=>{
       e.stopPropagation();
@@ -553,16 +611,11 @@ saveLocal(); renderMe(); renderList(); renderDir();
 applyTheme(localStorage.getItem('raskroi_theme')||'light');
 pullState(); setInterval(()=>{ if(!document.hidden) pullState(); }, CLOUD?5000:3000);
 // мгновенная синхронизация через Realtime (если включена репликация таблицы)
-let realtimeOn=false;
-function markSyncFlash(){
-  const t=$('#syncTxt');
-  if(t && realtimeOn) t.textContent+=' ⚡';
-}
 try{
   if(CLOUD && window.supabase){
     const sb=window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_KEY);
     sb.channel('state').on('postgres_changes',{event:'*',schema:'public',table:'app_state'},()=>{ pullState(); })
-      .subscribe((st)=>{ realtimeOn=(st==='SUBSCRIBED'); if(realtimeOn) markSyncFlash(); });
+      .subscribe();
   }
 }catch{}
 if('serviceWorker' in navigator){

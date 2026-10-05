@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=4">
+<link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
 <div id="pc">
@@ -30,6 +30,7 @@
       <div class="sync"><i id="syncDot"></i><span id="syncTxt">локально</span></div>
     </div>
   </aside>
+  <div id="pSpot" class="spot hidden"></div>
 
   <!-- ===== контент ===== -->
   <main id="main">
@@ -64,8 +65,7 @@
           <div id="pdMats" class="mats"></div>
           <p id="pdNote" class="detail-note hidden"></p>
           <button id="pdAdd" class="add-mat full">+ Добавить материал</button>
-          <div class="row2 gap"><button id="pdDup" class="btn">⧉ Повторить</button>
-          <button id="pdDelete" class="btn ghost danger">🗑 Удалить раскрой</button></div>
+          <button id="pdDelete" class="btn ghost danger full">🗑 Удалить раскрой</button>
           </div>
           <div id="pDetailEmpty" class="empty-pick hidden">← Выбери раскрой из списка</div>
         </div>
@@ -143,9 +143,10 @@
 
 <div id="pToast" class="toast hidden"></div>
 
+<script>window.BUILD='20261005a';</script>
 <script>if('serviceWorker' in navigator){addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
-<script src="config.js?v=4"></script>
-<script src="app.js?v=6"></script>
+<script src="config.js?v=5"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
